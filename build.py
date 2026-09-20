@@ -428,23 +428,47 @@ STUDENT_WORK = {
     ],
 }
 
+# 재학생.  (성명, 과정, 관심분야ko, en, 석사논문ko, en)
+#   과정 : "phd" 또는 "ms". 카드는 사진과 이름만 보여 주므로 나머지 칸은 지금 화면에 나오지 않는다.
+#   출신 학교 칸은 없앴다. 소개는 STUDENT_PROFILE 의 개인 페이지 링크로 대신한다.
 STUDENTS = [
  ("박지현","phd","지속가능 공급사슬관리, 조직생태학","Sustainable supply chain management; organizational ecology",
   "기계 학습과 RFM 모형을 이용한 고객 유형 분석: 문화예술 이용객을 대상으로",
-  "Customer segmentation with machine learning and RFM models: evidence from arts and culture audiences",
-  "", ""),
+  "Customer segmentation with machine learning and RFM models: evidence from arts and culture audiences"),
  ("부귀현","phd","","",
   "조직의 흡수역량이 혁신역량에 미치는 영향: 민첩성의 매개역할",
-  "How absorptive capacity shapes innovation capability: the mediating role of agility",
-  "", ""),
- ("김동진","ms","공급사슬관리, 군 물류체계 개선·최적화","Supply chain management; military logistics improvement and optimization","","", "", ""),
- ("이소현","ms","공급사슬관리, 공급망 리스크 관리, 물류","Supply chain management; supply chain risk management; logistics","","", "", ""),
- ("Yuhe Zeng","ms","","","","", "", ""),
- ("권진우","ms","","","","", "", ""),
- ("송미형","ms","","","","", "", ""),
- ("한지영","ms","","","","", "", ""),
- ("Hsin Lun Lee","ms","","","","", "", ""),
+  "How absorptive capacity shapes innovation capability: the mediating role of agility"),
+ ("김동진","ms","공급사슬관리, 군 물류체계 개선·최적화","Supply chain management; military logistics improvement and optimization","",""),
+ ("이소현","ms","공급사슬관리, 공급망 리스크 관리, 물류","Supply chain management; supply chain risk management; logistics","",""),
+ ("Yuhe Zeng","ms","","","",""),
+ ("권진우","ms","","","",""),
+ ("송미형","ms","","","",""),
+ ("한지영","ms","","","",""),
+ ("Hsin Lun Lee","ms","","","",""),
 ]
+
+# ---- 재학생 개인 페이지와 사진 -----------------------------------------------
+#  카드에는 사진과 이름만 나온다. 소개는 학생이 이미 가진 외부 페이지로 연결한다.
+#  STUDENTS 와 따로 둔다. 명단을 고치다가 이 칸을 건드리지 않게 하려는 것이다.
+#
+#  "이름": dict(initials="pjh", url="https://..."),
+#    initials : 사진 파일명에 쓰는 로마자 이니셜. 박사는 assets/img/students/ph_pjh.jpg,
+#               석사는 ms_pjh.jpg. 대소문자까지 파일명과 같아야 한다 (배포 서버는 구분한다).
+#    url      : 본인이 만든 개인 페이지 주소(http 또는 https). 빈 문자열이면 링크를 걸지 않는다.
+#  사진이 없어도 된다. 이니셜을 적지 않으면 이름의 첫 글자가 표시된다.
+#  졸업한 학생은 STUDENTS 에서 뺄 때 여기서도 뺀다. 남아 있으면 빌드가 알려 준다.
+# 이니셜 부분 수정하세요!!
+STUDENT_PROFILE = {
+    "박지현": dict(initials="ph_pjh", url=""),
+    "부귀현": dict(initials="ph_bgh", url=""),
+    "김동진": dict(initials="ms_kdj", url=""),
+    "이소현": dict(initials="ms_lsh", url=""),
+    "Yuhe Zeng": dict(initials="ms_", url=""),
+    "권진우": dict(initials="ms_", url=""),
+    "송미형": dict(initials="ms_", url=""),
+    "한지영": dict(initials="ms_", url=""),
+    "Hsin Lun Lee": dict(initials="ms_", url=""),
+}
 
 ADV = {"허대식":"Daesik Hur","민순홍":"Soonhong Min","최선미":"Sunmee Choi","배성주":"Sungjoo Bae",
        "박승재":"Seungjae Park","정승환":"Seunghwan Jung","김기영":"Ki-Young Kim","김태현":"Tae-Hyun Kim"}
@@ -625,6 +649,7 @@ def speaker(ko, rko, ren, ctx=None):
     return t("%s %s" % (ko, rko), en_full)
 
 # ---- 졸업생 (이름, 졸업연도, 지도교수, 논문주제ko, en, 근무지ko, en)
+# 진로 분류 필요함
 ALUMNI_MS = [
  ("조효원",2026,"민순홍","","","",""),
  ("박정수",2026,"허대식","","","",""),
@@ -1229,7 +1254,6 @@ def build_index():
 <section class="hero">
  <div class="hero__bg"><div class="hero__grad"></div><div class="hero__photo"></div><div class="hero__veil"></div></div>
  %s
- %s
  <div class="wrap hero__in">
   <div class="eyebrow rv">%s</div>
   %s
@@ -1350,7 +1374,7 @@ def build_index():
  </div>
 </section>
 ''' % (
- ARCH, net("hero__net"),
+ net("hero__net"),
  t("연세대학교 경영대학 &middot; 석사 / 박사 과정",
    "Yonsei School of Business &middot; M.S. / Ph.D. Programs"),
  ('<h1 class="rv" data-delay="80">%s<span class="accent ko">가치의 흐름을 설계하는&nbsp;학문</span>'
@@ -1773,57 +1797,91 @@ def reviewed_note():
         CONTACT_MAIL, t("정보 수정 요청", "Request a correction"))
 
 
+STUDENT_PHOTO_DIR = os.path.join("assets", "img", "students")
+
+
+def student_photo_name(nm, deg):
+    """사진 파일명. 이니셜이 등록된 학생만 만든다. 박사는 ph_, 석사는 ms_ 로 시작한다."""
+    ini = STUDENT_PROFILE.get(nm, {}).get("initials")
+    return "%s_%s.jpg" % ("ph" if deg == "phd" else "ms", ini) if ini else None
+
+
+def student_url(nm):
+    """개인 페이지 주소. http(s) 가 아니면 링크를 걸지 않는다 (javascript: 같은 주소 차단)."""
+    url = STUDENT_PROFILE.get(nm, {}).get("url", "").strip()
+    if url and not url.startswith(("http://", "https://")):
+        print("  [확인할 것] 개인 페이지 주소는 http 또는 https 로 시작해야 합니다: %s (%s)" % (url, nm))
+        return ""
+    return url
+
+
+def student_card(st, delay=0):
+    """재학생 카드. 사진과 이름만 싣는다. 개인 페이지가 있으면 사진과 이름 전체가 링크가 된다."""
+    nm, deg = st[0], st[1]
+    fn = student_photo_name(nm, deg)
+    img = ('<img src="assets/img/students/%s" alt="" loading="lazy" onerror="this.remove()">'
+           % quote(fn)) if fn else ""
+    url = student_url(nm)
+    # 링크일 때만 이름 뒤에 바깥 링크 아이콘을 붙여 눌러 볼 수 있다는 것을 알려 준다.
+    name = '<div class="stu__n">%s%s</div>' % (pname(nm), I["ext"] if url else "")
+    inner = '<div class="stu__ph">%s<span class="stu__ini">%s</span></div>%s' % (img, nm[0], name)
+    if url:
+        inner = '<a class="stu__a" href="%s" target="_blank" rel="noopener noreferrer">%s</a>' % (
+            html_escape(url, quote=True), inner)
+    return '<article class="stu rv" data-item data-tags="%s" data-delay="%d">%s</article>' % (deg, delay, inner)
+
+
+def student_checks():
+    """사진과 개인 페이지 등록 상태를 빌드할 때 점검한다."""
+    names = {s[0] for s in STUDENTS}
+    for nm in STUDENT_PROFILE:
+        if nm not in names:
+            print("  [확인할 것] STUDENT_PROFILE 에 명단에 없는 이름이 있습니다 (졸업했거나 오타): %s" % nm)
+    seen = {}
+    for st in STUDENTS:
+        fn = student_photo_name(st[0], st[1])
+        if not fn:
+            continue
+        if fn in seen:
+            print("  [확인할 것] 학생 사진 파일명이 겹칩니다: %s (%s, %s)" % (fn, seen[fn], st[0]))
+        seen[fn] = st[0]
+        if not os.path.isfile(os.path.join(OUT, STUDENT_PHOTO_DIR, fn)):
+            print("  [확인할 것] 학생 사진 파일이 없습니다: %s (%s)" % (fn, st[0]))
+
+
 def build_students():
-    cards = ""
-    for i, st in enumerate(STUDENTS):
-        nm, deg, iko, ien, tko, ten = st[:6]
-        eko, een = (st[6], st[7]) if len(st) > 7 else ("", "")
-        badge = t("박사과정", "Ph.D. student", "span", "badge badge--gold") if deg == "phd" else t("석사과정", "M.S. student", "span", "badge")
-        interest = t(iko, ien, "div", "scard__i") if iko else t("연구 관심 분야 준비 중", "Research interests to be announced", "div", "scard__i")
-        # 출신 학교. 아직 모으는 중이라 대부분 비어 있다. 칸이 있다는 것이
-        # 보여야 채워 넣을 수 있으므로, 비었을 때도 자리를 남겨 둔다.
-        # STUDENTS 의 마지막 두 칸을 채우면 그 값이 그대로 들어간다.
-        edu = '<div class="scard__e">%s %s</div>' % (
-            I["cap"],
-            t(eko, een) if eko else t("출신 학교 미기재", "Prior degree not listed",
-                                      "span", "scard__blank"))
-        thesis = ('<div class="scard__t">%s %s</div>' % (t("<b>석사 논문</b>", "<b>M.S. thesis</b>"), t(tko, ten))) if tko else ""
-        work = ""
-        entries = STUDENT_WORK.get(nm, [])
-        if entries:
-            order = {"pub": 0, "conf": 1}
-            label = {"pub": ("논문", "Paper"), "conf": ("발표", "Talk")}
-            work = '<ul class="scard__work">%s</ul>' % "".join(
-                '<li><span class="scard__k">%s</span><span>%s</span></li>'
-                % (t(*label[k]), t(ko_, en_))
-                for k, ko_, en_ in sorted(entries, key=lambda e: order.get(e[0], 9)))
-        cards += '''<article class="scard rv" data-item data-tags="%s" data-delay="%d">
- <div class="scard__hd"><span class="scard__n">%s</span>%s</div>
- %s
- %s
- %s
- %s
-</article>''' % (deg, (i % 3) * 60, pname(nm), badge, interest, edu, thesis, work)
+    n_phd = sum(1 for x in STUDENTS if x[1] == "phd")
+    n_ms = sum(1 for x in STUDENTS if x[1] == "ms")
+    groups = ""
+    for deg, ko, en in (("phd", "박사과정", "Ph.D. program"), ("ms", "석사과정", "M.S. program")):
+        rows = [s for s in STUDENTS if s[1] == deg]
+        if not rows:                      # 빈 과정은 제목도 그리지 않는다
+            continue
+        groups += '''<div class="ygroup rv" data-group>
+                    <h3>%s<span class="cnt">%d</span></h3>
+                    <div class="sgrid">%s</div>
+                    </div>''' % (t(ko, en, "span"), len(rows),
+             "".join(student_card(s, (i % 4) * 60) for i, s in enumerate(rows)))
 
     body = phead("Students", "재학생 현황", "Current students",
-                 t("박사과정 %d명 · 석사과정 %d명" % (sum(1 for x in STUDENTS if x[1] == "phd"),
-                                              sum(1 for x in STUDENTS if x[1] == "ms")),
-                   "%d doctoral and %d master's students" % (sum(1 for x in STUDENTS if x[1] == "phd"),
-                                                             sum(1 for x in STUDENTS if x[1] == "ms"))),
-                 "본 전공 석·박사 과정에 재학 중인 학생의 연구 관심 분야입니다.",
-                 "The research interests of the students currently enrolled in our master's and doctoral programs.")
+                 t("박사과정 %d명 · 석사과정 %d명" % (n_phd, n_ms),
+                   "%d doctoral and %d master's students" % (n_phd, n_ms)),
+                 "본 전공 석·박사 과정에 재학 중인 학생입니다. 개인 페이지가 있는 학생은 사진을 눌러 소개를 볼 수 있습니다.",
+                 "The students currently enrolled in our master's and doctoral programs. Where a student has a personal page, select the photo to visit it.")
     body += '''
 <section class="sec">
  <div class="wrap">
-  <div class="grid g2">%s</div>
+  %s
   %s
  </div>
 </section>
-''' % (cards, reviewed_note())
+''' % (groups, reviewed_note())
     page("students.html",
          "재학생 현황 | 연세대 경영대학 오퍼레이션 전공",
          "Current students | Operations Management, Yonsei School of Business",
-         "오퍼레이션 전공 석·박사 과정 재학생의 연구 관심 분야 소개.", body)
+         "오퍼레이션 전공 석·박사 과정 재학생 명단과 개인 소개 페이지.", body)
+    student_checks()
+
 
 # ============================================================== alumni
 def placement_summary():
@@ -2143,9 +2201,6 @@ if __name__ == "__main__":
     guard_headings()
     samples = sum(1 for es in STUDENT_WORK.values() for e in es if "[견본]" in e[1])
     if samples:
-        print("  [지울 것] 견본 연구 실적 %d건이 재학생 카드에 나옵니다 (STUDENT_WORK). 게시 전에 지우세요." % samples)
+        print("  [지울 것] 견본 연구 실적 %d건이 STUDENT_WORK 에 남아 있습니다 (지금은 화면에 나오지 않음). 게시 전에 지우세요." % samples)
     if NAMES_EN_UNVERIFIED:
         print("  [확인할 것] 영문 이름 철자 %d명 (NAMES_EN_UNVERIFIED)" % len(NAMES_EN_UNVERIFIED))
-    blank = [x[0] for x in STUDENTS if not x[6]]
-    if blank:
-        print("  [채울 것] 출신 학교 %d명: %s" % (len(blank), ", ".join(blank)))
