@@ -12,6 +12,8 @@
 import io, os, re, unicodedata
 from urllib.parse import quote
 from html import escape as html_escape
+from decimal import Decimal, ROUND_HALF_UP
+
 OUT = os.path.dirname(os.path.abspath(__file__))
 
 # ============================================================== helpers
@@ -1211,15 +1213,20 @@ def area_cards():
     return out
 
 # ============================================================== index
+def students_per_faculty():
+    """전임교원 1인당 재학 대학원생 수. 소수 첫째 자리까지 반올림(0.05는 올림)한 문자열을 돌려준다."""
+    ratio = Decimal(len(STUDENTS)) / Decimal(len(FACULTY))
+    return str(ratio.quantize(Decimal("0.1"), rounding=ROUND_HALF_UP))
+
 def build_index():
-    stats = [
-        (len(FACULTY), "전임 교수", "Faculty members"),
-        (len(STUDENTS), "재학 대학원생", "Current graduate students"),
-        (len(ALUMNI_MS) + len(ALUMNI_PHD), "석·박사 졸업생", "M.S. &amp; Ph.D. alumni"),
-        (SEMINAR_TOTAL, "초청 연구 세미나", "Invited research seminars"),
+  stats = [
+        (str(len(FACULTY)), "전임 교수", "Faculty members"),
+        (students_per_faculty(), "전임교원 당 학생 수", "Students per faculty member"),
+        (str(len(ALUMNI_MS) + len(ALUMNI_PHD)), "석·박사 졸업생", "M.S. &amp; Ph.D. alumni"),
+        (str(SEMINAR_TOTAL), "초청 연구 세미나", "Invited research seminars"),
     ]
     strip = "".join(
-        '<div class="stat"><div class="stat__n" data-count="%d">%d</div>%s</div>'
+        '<div class="stat"><div class="stat__n" data-count="%s">%s</div>%s</div>'
         % (n, n, t(ko, en, "div", "stat__l")) for n, ko, en in stats)
 
     # 홈에는 한 줄 요약과 상세 페이지 링크만 둔다. 내용의 원본은 각 상세 페이지가 가진다.
@@ -1253,6 +1260,7 @@ def build_index():
     body = '''
 <section class="hero">
  <div class="hero__bg"><div class="hero__grad"></div><div class="hero__photo"></div><div class="hero__veil"></div></div>
+ %s
  %s
  <div class="wrap hero__in">
   <div class="eyebrow rv">%s</div>
@@ -1374,7 +1382,7 @@ def build_index():
  </div>
 </section>
 ''' % (
- net("hero__net"),
+ ARCH, net("hero__net"),
  t("연세대학교 경영대학 &middot; 석사 / 박사 과정",
    "Yonsei School of Business &middot; M.S. / Ph.D. Programs"),
  ('<h1 class="rv" data-delay="80">%s<span class="accent ko">가치의 흐름을 설계하는&nbsp;학문</span>'

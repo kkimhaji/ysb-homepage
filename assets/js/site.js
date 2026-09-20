@@ -96,14 +96,19 @@
     var io2 = new IntersectionObserver(function (entries) {
       entries.forEach(function (en) {
         if (!en.isIntersecting) return;
-        var el = en.target, target = parseInt(el.getAttribute('data-count'), 10);
+        var el = en.target, raw = el.getAttribute('data-count');
+        var target = parseFloat(raw);
+        /* 소수 자릿수는 마크업 값에서 읽는다. "1.5" 는 1자리, "64" 는 0자리.
+           parseInt 는 소수점을 버려서 1.5 가 1 로 굴러가므로 쓰지 않는다. */
+        var dec = (raw.split('.')[1] || '').length;
+        function fmt(v) { return v.toFixed(dec); }
         var t0 = null, done = false;
-        function finish() { if (!done) { done = true; el.textContent = target; } }
+        function finish() { if (!done) { done = true; el.textContent = fmt(target); } }
         function step(ts) {
           if (done) return;
           if (!t0) t0 = ts;
           var p = Math.min((ts - t0) / 1100, 1);
-          if (p < 1) { el.textContent = Math.round(target * (1 - Math.pow(1 - p, 3)));
+          if (p < 1) { el.textContent = fmt(target * (1 - Math.pow(1 - p, 3)));
                        requestAnimationFrame(step); }
           else { finish(); }
         }
