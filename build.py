@@ -729,10 +729,10 @@ FAQ = [
   "How do students cover tuition and living costs?",
   "수업 조교 장학금은 등록금을 면제하며, BK21 장학금 수혜자는 매 학기 선발합니다. "
   "진행 중인 연구과제에 연구보조원으로 참여하는 방법도 있습니다. "
-  "금액과 신청 요건은 해마다 달라지므로 일반대학원 장학 안내를 함께 확인해 주시기 바랍니다.",
+  "금액과 신청 요건은 학기마다 달라지므로 일반대학원 장학 안내를 함께 확인해 주시기 바랍니다.",
   "A teaching assistantship waives tuition, and BK21 stipends are awarded each semester. "
   "Students can also join funded research projects as research assistants. "
-  "Amounts and eligibility change from year to year, so please also check the Graduate School's funding pages."),
+  "Amounts and eligibility change from semester to semester, so please also check the Graduate School's funding pages."),
 
  ("직장과 병행할 수 있나요?",
   "Can I study while working full time?",
@@ -1104,9 +1104,9 @@ def build_index():
 
     meth = "".join('<li>%s%s</li>' % (I["check"], t(ko, en)) for ko, en in METHODS)
 
-    acad = [("이연주", "Penn State University"), ("박민아", "Oberlin College"),
-            ("김효진", "건국대학교|Konkuk University"), ("김수연", "한밭대학교|Hanbat National University"),
-            ("정대훈", "University of Florida"), ("복준혁", "동북재경대학|Dongbei Univ. of Finance & Economics")]
+    acad = [("이연주", "Penn State University 교수| Penn State University Professor"), ("박민아", "Oberlin College 교수|Oberlin College Professor"),
+            ("김효진", "건국대학교 교수|Konkuk University Professor"), ("김수연", "한밭대학교 교수|Hanbat National University Professor"),
+            ("정대훈", "University of Florida 박사과정|University of Florida Ph.D. candidate"), ("복준혁", "동북재경대학 교수|Dongbei Univ. of Finance & Economics Professor")]
     acad_html = ""
     for nm, aff in acad:
         ko, en = (aff.split("|") + [aff])[:2] if "|" in aff else (aff, aff)
@@ -1515,8 +1515,8 @@ def build_admissions():
  t("지원을 앞두고 가장 많이 받는 질문과 답을 정리했습니다.",
    "The questions we are asked most often by prospective students.", "p", "dek"),
  faq_block(),
- t("전형 일정과 어학 요건, 등록금처럼 해마다 바뀌는 사항은 연세대학교 일반대학원 공고를 확인해 주시기 바랍니다.",
-   "For items that change each year, such as the application timeline, language requirements, and tuition, please refer to the Yonsei Graduate School announcements."),
+ t("전형 일정과 어학 요건, 등록금처럼 학기마다 바뀌는 사항은 연세대학교 일반대학원 공고를 확인해 주시기 바랍니다.",
+   "For items that change each semester, such as the application timeline, language requirements, and tuition, please refer to the Yonsei Graduate School announcements."),
  t("일반대학원 입시 안내", "Graduate School admissions"),
  net("cta__net"),
  t("석·박사 과정 문의", "Contact us", "h2"),
