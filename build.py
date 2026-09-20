@@ -650,10 +650,14 @@ def speaker(ko, rko, ren, ctx=None):
     en_full = ("%s %s" % (ren, en)) if ren in ("Prof.", "Dr.") else ("%s, %s" % (en, ren))
     return t("%s %s" % (ko, rko), en_full)
 
-# ---- 졸업생 (이름, 졸업연도, 지도교수, 논문주제ko, en, 근무지ko, en)
+# ---- 졸업생 (이름, 졸업연도, 지도교수, 논문주제ko, en, 근무지ko, en [, 논문 URL])
+#   논문 URL 은 선택이다. 있는 사람만 튜플 맨 끝(8번째 칸)에 문자열로 덧붙인다. 예)
+#     ("조효원",2026,"민순홍","","","","","https://dcollection.yonsei.ac.kr/..."),
+#   http:// 또는 https:// 로 시작해야 한다. 없는 사람의 튜플은 그대로 둔다.
+#   표에는 URL 이 하나라도 있는 표에만 '논문' 열이 생긴다. 모두 비어 있으면 열이 나오지 않는다.
 # 진로 분류 필요함
 ALUMNI_MS = [
- ("조효원",2026,"민순홍","","","",""),
+ ("조효원",2026,"민순홍","","","","", "https://www.yonsei.ac.kr/sc/index.do"),
  ("박정수",2026,"허대식","","","",""),
  ("안민정",2026,"정승환","","","UCLA 경영대학원 박사과정","Ph.D. student, UCLA Anderson School of Management"),
  ("L. Jin",2026,"민순홍","인적자원 지향성","Human resource orientation","古茗(Good me)","Good Me (Guming)"),
@@ -1219,7 +1223,7 @@ def students_per_faculty():
     return str(ratio.quantize(Decimal("0.1"), rounding=ROUND_HALF_UP))
 
 def build_index():
-  stats = [
+    stats = [
         (str(len(FACULTY)), "전임 교수", "Faculty members"),
         (students_per_faculty(), "전임교원 당 학생 수", "Students per faculty member"),
         (str(len(ALUMNI_MS) + len(ALUMNI_PHD)), "석·박사 졸업생", "M.S. &amp; Ph.D. alumni"),
@@ -1948,33 +1952,74 @@ def career_section():
        t("학계 진출 동문", "Alumni in academia", "span"),
        academic_list())
 
+def thesis_raw(a):
+    """졸업생 튜플의 8번째 칸(선택)에 적힌 논문 주소 원문. 칸이 없거나 비어 있으면 빈 문자열."""
+    return (a[7] or "").strip() if len(a) > 7 else ""
+
+
+def thesis_url(a):
+    """링크로 쓸 수 있는 논문 주소. http(s) 가 아니면 빈 문자열."""
+    url = thesis_raw(a)
+    return url if url.startswith(("http://", "https://")) else ""
+
+
+def thesis_link(a):
+    url = thesis_url(a)
+    if not url:
+        return ""
+    return ('<a class="tlink" href="%s" target="_blank" rel="noopener noreferrer">%s%s</a>'
+            % (html_escape(url, quote=True), t("논문 보기", "View thesis"), I["ext"]))
+
+
+def alumni_checks():
+    """논문 URL 칸을 점검한다. 형식이 틀린 주소와 칸 수 초과를 알려 준다."""
+    linked = 0
+    for a in ALUMNI_MS + ALUMNI_PHD:
+        if len(a) > 8:
+            print("  [확인할 것] 졸업생 튜플의 칸이 너무 많습니다 (%s)" % a[0])
+        if not thesis_raw(a):
+            continue
+        if thesis_url(a):
+            linked += 1
+        else:
+            print("  [확인할 것] 논문 주소는 http 또는 https 로 시작해야 합니다: %s (%s)" % (thesis_raw(a), a[0]))
+    if linked:
+        print("  논문 링크 %d건 연결" % linked)
+
 def build_alumni():
     # 박사과정은 논문 주제를 아직 모으지 못했다. 30행이 전부 줄표가 되면
     # 칸이 비었다는 사실만 크게 보이므로, 그럴 때는 열 자체를 내린다.
     # 주제를 채워 넣으면 show_topic=True 로 되돌리면 된다.
-    def rows(data, tag, show_topic=True):
+    def rows(data, tag, show_topic=True, show_thesis=False):
         out = ""
-        for nm, yr, adv, tko, ten, pko, pen in data:
+        for a in data:
+            nm, yr, adv, tko, ten, pko, pen = a[:7]      # 8번째 칸(논문 URL)은 선택이라 따로 읽는다
             place = t(pko, pen) if pko else '<span style="color:var(--muted)">&mdash;</span>'
             topic = ""
             if show_topic:
                 topic = '<td>%s</td>' % (t(tko, ten) if tko
                                          else '<span style="color:var(--muted)">&mdash;</span>')
+            thesis = '<td class="lk">%s</td>' % thesis_link(a) if show_thesis else ""
             out += ('<tr data-item data-tags="%s"><td class="nm">%s</td><td class="yr">%d</td>'
-                    '<td class="yr">%s</td>%s<td>%s</td></tr>'
-                    % (tag, pname(nm, pen), yr, t(adv, ADV.get(adv, adv)), topic, place))
+                    '<td class="yr">%s</td>%s%s<td>%s</td></tr>'
+                    % (tag, pname(nm, pen), yr, t(adv, ADV.get(adv, adv)), topic, thesis, place))
         return out
 
     def block(title_ko, title_en, data, tag, show_topic=True):
+        show_thesis = any(thesis_url(a) for a in data)     # 링크가 하나라도 있는 표에만 열을 그린다
         cols = [t("이름", "Name"), t("졸업 연도", "Year"), t("지도교수", "Advisor")]
         if show_topic:
             cols.append(t("논문 주제", "Thesis topic"))
+        if show_thesis:
+            cols.append(t("논문", "Thesis"))
         cols.append(t("근무지", "Placement"))
+
         head = '<thead><tr>%s</tr></thead>' % "".join("<th>%s</th>" % c for c in cols)
         return '''<div class="ygroup rv" data-group>
  <h3>%s<span class="cnt">%d</span></h3>
  <div class="tablewrap"><div class="tablescroll"><table>%s<tbody>%s</tbody></table></div></div>
-</div>''' % (t(title_ko, title_en, "span"), len(data), head, rows(data, tag, show_topic))
+
+</div>''' % (t(title_ko, title_en, "span"), len(data), head, rows(data, tag, show_topic, show_thesis))
 
     body = phead("Alumni", "졸업생 현황", "Alumni",
                  t("1984년 첫 박사 배출 이후 %d명" % (len(ALUMNI_MS) + len(ALUMNI_PHD)),
@@ -2029,6 +2074,7 @@ def build_alumni():
          "졸업생 현황 | 연세대 경영대학 오퍼레이션 전공",
          "Alumni | Operations Management, Yonsei School of Business",
          "오퍼레이션 전공 석·박사 졸업생의 논문 주제와 진로 현황, 그리고 졸업생 추천 글.", body)
+    alumni_checks()
 
 # ============================================================== community
 def build_community():
