@@ -640,3 +640,29 @@ td.yr{white-space:nowrap;font-variant-numeric:tabular-nums;color:var(--muted)}
 }
 .fcard__roles li + li{margin-top:7px}
 .fcard__roles svg{width:14px;height:14px;flex:0 0 auto;margin-top:3px;color:var(--brand);opacity:.75}
+
+/* 홈의 축약 교수 카드: 관심분야를 2줄에서 자른다.
+   -webkit-line-clamp 는 display:-webkit-box, -webkit-box-orient:vertical 과 함께 써야 동작한다.
+   비활성 언어 쪽은 기존 규칙 html[data-lang] .ko/.en{display:none !important} 가 이겨서 그대로 숨는다. */
+   .fcard--brief .fcard__int{
+    flex:0 0 auto;
+    display:-webkit-box;
+    -webkit-box-orient:vertical;
+    -webkit-line-clamp:2;
+    overflow:hidden;
+  }
+  .fcard--brief .fcard__b{padding-bottom:22px}
+
+  /* ===== 커뮤니티 사진 ===== */
+.gallery{display:grid;grid-template-columns:repeat(3,1fr);gap:22px 16px}
+.photo{margin:0;min-width:0}
+.photo a{display:block}
+/* 사진마다 가로세로 비율이 달라도 칸은 4:3으로 맞추고, 넘치는 부분은 잘라서 채운다(object-fit:cover). */
+.photo img{
+  width:100%;aspect-ratio:4/3;object-fit:cover;
+  border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--bg-tint);
+}
+.photo figcaption{margin-top:9px;font-size:13.5px;line-height:1.55;color:var(--text-2)}
+.photo__d{display:block;font-size:12px;font-weight:700;color:var(--brand);font-variant-numeric:tabular-nums}
+@media(max-width:980px){.gallery{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:520px){.gallery{grid-template-columns:1fr}}

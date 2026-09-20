@@ -160,6 +160,7 @@
   wireFilter('[data-scope="alumni"]');
   wireFilter('[data-scope="students"]');
   wireFilter('[data-scope="seminars"]');
+  wireFilter('[data-scope="community"]');
 
   /* ---------- faculty photo slots (hide broken images) ---------- */
   document.querySelectorAll('.fcard__ph img').forEach(function (img) {

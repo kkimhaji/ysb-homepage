@@ -9,8 +9,9 @@
 내용을 고치려면 아래 DATA 영역을 수정한 뒤 다시 실행하세요.
 (HTML 파일을 직접 수정해도 되지만, 그 경우 build.py 는 다시 실행하지 마세요.)
 """
-import io, os, re
-
+import io, os, re, unicodedata
+from urllib.parse import quote
+from html import escape as html_escape
 OUT = os.path.dirname(os.path.abspath(__file__))
 
 # ============================================================== helpers
@@ -141,8 +142,7 @@ NAV = [
     ("students.html",   "재학생",     "Students"),
     ("alumni.html",     "졸업생",     "Alumni"),
     ("seminars.html",   "세미나",     "Seminars"),
-    ("news.html",       "소식",       "News"),
-]
+    ("community.html",  "커뮤니티",   "Community"),]
 
 FAVICON = ("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E"
            "%3Crect width='40' height='40' rx='11' fill='%2300285A'/%3E"
@@ -660,6 +660,34 @@ ALUMNI_MS = [
  ("복준혁",2010,"허대식","공급망 통합","Supply chain integration","동북재경대학 교수","Professor, Dongbei University of Finance and Economics"),
  ("서용기",2006,"김태현","공급계약의 동적 특성","Dynamics of supply contracts","로지스올그룹 부회장","Vice Chairman, Logisall Group"),
 ]
+
+# ---- 졸업 후 진로 (졸업생 페이지 '졸업 후 진로'에 싣는다) ----------------------
+CAREERS = [
+ ("cube", "기업", "Industry",
+  "국내 및 다국적 기업의 프로세스 디자인 및 관리, 호텔·레스토랑·병원 등 서비스 경영, 신제품개발, 구매, 물류 및 유통, 글로벌 공급사슬관리, 시스템 통합 등",
+  "Process design and management, service management in hotels, restaurants, and hospitals, new product development, sourcing, logistics and distribution, global supply chain management, and systems integration."),
+ ("gear", "컨설팅", "Consulting",
+  "국내외 컨설팅업체에서 프로세스 개선, 서비스 경영, 신제품 개발 등의 분야를 담당하는 컨설턴트",
+  "Consultants at Korean and global firms working on process improvement, service management, and new product development."),
+ ("book", "연구직", "Research institutes",
+  "대기업 경영·경제 연구소 및 국책 연구소의 연구원",
+  "Researchers at corporate economic research centers and government-funded research institutes."),
+ ("cap", "학계", "Academia",
+  "국내외 박사과정 진학 후 교수직 및 연구직 진출",
+  "Ph.D. study in Korea or abroad, then faculty and research positions."),
+]
+
+# 학계로 진출한 대표 동문. 이름만 적는다. 소속과 직위는 위 졸업생 표에서 읽어 온다
+# (같은 사실을 두 곳에 적으면 한쪽이 낡는다). 표에 없는 이름이면 빌드가 KeyError 로 멈춘다.
+# 학계로 진출한 대표 동문 (이름, 소속 국문, 소속 영문). 홈에 있던 목록을 그대로 옮긴 것이다.
+ACADEMIC_HIGHLIGHTS = [
+ ("이연주", "Penn State University 교수", "Penn State University Professor"),
+ ("박민아", "Oberlin College 교수", "Oberlin College Professor"),
+ ("김효진", "건국대학교 교수", "Konkuk University Professor"),
+ ("김수연", "한밭대학교 교수", "Hanbat National University Professor"),
+ ("정대훈", "University of Florida 박사과정", "University of Florida Ph.D. candidate"),
+ ("복준혁", "동북재경대학 교수", "Dongbei Univ. of Finance & Economics Professor"),
+]
 ALUMNI_PHD = [
  ("박채원",2026,"배성주","","","",""),
  ("박민아",2020,"배성주","","","Oberlin College 조교수","Assistant Professor, Oberlin College"),
@@ -769,9 +797,10 @@ FAQ = [
 #    링크   : 사이트 안 페이지나 외부 원문 주소. 없으면 빈 문자열.
 #
 NEWS_CATS = {
-    "honor":   ("수상 · 임용", "Honors &amp; Appointments"),
+    "notice":   ("공지", "Notice"),
+    "honor":    ("수상 · 임용", "Honors &amp; Appointments"),
     "research": ("연구 · 논문", "Research"),
-    "program": ("전공 소식", "Program"),
+    "program":  ("전공 소식", "Program"),
 }
 
 NEWS = [
@@ -803,6 +832,20 @@ NEWS = [
   "Two students received their M.S. degrees in February 2026: Jiwon Son (advisor: Daesik Hur) and L. Jin (advisor: Soonhong Min).",
   "alumni.html"),
 ]
+# ---- 공지사항 ----------------------------------------------------------
+#  형식 (사건월, 국문, 영문, 링크). 영문과 링크는 빈 문자열이어도 된다.
+#  영문이 비면 영어 화면에도 국문이 그대로 나온다.
+#  비어 있으면 커뮤니티의 공지사항 그룹과 필터 버튼이 나오지 않는다.
+NOTICES = [("2026-09", "[테스트] 공지 제목", "[Test] Notice title", "")]
+
+# ---- 커뮤니티 사진 -------------------------------------------------------
+#  assets/img/community/ 폴더에 파일을 넣으면 빌드 때 자동으로 갤러리에 실린다.
+#  파일명 규칙:  YYYY-MM_설명.jpg  또는  YYYY-MM-DD_설명.jpg  (jpg, jpeg, png, webp)
+#                 설명의 밑줄(_)은 화면에서 공백으로 보인다. 예) 2026-06-19_조형찬 교수 세미나.jpg
+#  영문 설명이 필요한 사진만 아래에 파일명을 키로 적는다. 없으면 국문이 영어 화면에도 나온다.
+PHOTO_CAPTIONS_EN = {
+    # "2026-06-19_조형찬 교수 세미나.jpg": "Seminar by Prof. Hyungchan Cho",
+}
 
 MONTHS_EN = ["January", "February", "March", "April", "May", "June",
              "July", "August", "September", "October", "November", "December"]
@@ -960,16 +1003,16 @@ TESTIMONIALS = [
  ),
 ]
 
-
 def testimonial_excerpt(tm):
-    """홈 화면용. 발췌 문단과 서명만 싣는다."""
+    """홈 화면용. 발췌 문단과 서명, 전문 링크를 싣는다."""
     return ('<div class="tquote">\n'
             + "".join("     %s\n" % t(ko, en, "p") for ko, en in tm["excerpt"])
             + '     <div class="tquote__by"><span>%s%s</span></div>\n'
               % (t("<b>%s</b>" % tm["name"][0], "<b>%s</b>" % tm["name"][1]),
                  t("<span>%s</span>" % tm["meta"][0], "<span>%s</span>" % tm["meta"][1]))
+            + '     <div style="margin-top:18px"><a class="chip" href="alumni.html#letter">%s%s</a></div>\n'
+              % (I["arrow"], t("전문 읽기", "Read the full letter"))
             + '    </div>')
-
 
 def testimonial_letters():
     """졸업생 페이지용. 추천 글을 모두 전문으로 싣는다."""
@@ -985,6 +1028,29 @@ def testimonial_letters():
     return "\n  ".join(out)
 
 # ============================================================== components
+def fcard_photo(photo, ini):
+    """교수 카드의 사진 칸. 파일이 없으면 img 가 스스로 지워져 이니셜이 남는다."""
+    return ('<div class="fcard__ph"><img src="assets/img/faculty/%s" alt="" loading="lazy" '
+            'onerror="this.remove()"><span class="fcard__ini">%s</span></div>' % (photo, ini))
+
+
+def fcard_brief(f, delay=0):
+    """홈 화면용 축약 교수 카드. 사진, 이름, 직위, 관심분야만 싣는다.
+    연락처와 이메일·홈페이지 링크는 전공 교수 페이지(fcard)에서만 보여 준다."""
+    ko, en, ini, rko, ren, iko, ien = f[:7]
+    photo = f[9]
+    return '''<article class="fcard fcard--brief rv" data-delay="%d">
+ %s
+ <div class="fcard__b">
+  %s
+  %s
+  %s
+ </div>
+</article>''' % (delay, fcard_photo(photo, ini),
+                 t(ko, en, "div", "fcard__name"),
+                 t(rko, ren, "div", "fcard__role"),
+                 t(iko, ien, "p", "fcard__int"))
+
 def fcard(f, delay=0, show_roles=False):
     ko, en, ini, rko, ren, iko, ien, mail, url, photo = f[:10]
     extra = f[10] if len(f) > 10 else None
@@ -1010,7 +1076,7 @@ def fcard(f, delay=0, show_roles=False):
             roles = '<ul class="fcard__roles">%s</ul>' % "".join(
                 "<li>%s%s</li>" % (I["check"], t(rko, ren)) for rko, ren in rs)
     return '''<article class="fcard rv" data-delay="%d">
- <div class="fcard__ph"><img src="assets/img/faculty/%s" alt="" loading="lazy" onerror="this.remove()"><span class="fcard__ini">%s</span></div>
+ %s
  <div class="fcard__b">
   %s
   %s
@@ -1019,7 +1085,7 @@ def fcard(f, delay=0, show_roles=False):
   %s
   <div class="fcard__f">%s</div>
  </div>
-</article>''' % (delay, photo, ini,
+</article>''' % (delay, fcard_photo(photo, ini),
                  t(ko, en, "div", "fcard__name"),
                  t(rko, ren, "div", "fcard__role"),
                  t(iko, ien, "p", "fcard__int"), where, roles, chips)
@@ -1041,7 +1107,7 @@ def faq_block():
     return '<div class="faq">%s</div>' % rows
 
 
-def news_row(item):
+def news_row(item, kind=None):
     ym, cat, ko, en, url = item
     y, m = ym.split("-")
     date = t("%s. %s." % (y, int(m)), "%s %s" % (MONTHS_EN[int(m) - 1], y),
@@ -1056,16 +1122,61 @@ def news_row(item):
         body = '<a href="%s"%s>%s%s</a>' % (
             url, ' target="_blank" rel="noopener"' if ext else "",
             body, I["ext"] if ext else I["arrow"])
-    return '<li>%s%s<span class="news__t">%s</span></li>' % (date, tag, body)
+    attr = ' data-item data-tags="%s"' % kind if kind else ""
+    return '<li%s>%s%s<span class="news__t">%s</span></li>' % (attr, date, tag, body)
+
+def feed():
+    """공지사항과 소식을 날짜 내림차순으로 합친 목록. 홈의 최근 소식에 쓴다."""
+    notices = [(ym, "notice", ko, en, url) for ym, ko, en, url in NOTICES]
+    return sorted(notices + NEWS, key=lambda x: x[0], reverse=True)
 
 
 def news_block(limit=5):
-    """홈에 붙는 소식 블록. 최근 몇 건만 보여 주고 전체는 news.html 에 둔다."""
-    if not NEWS:
+    """홈에 붙는 블록. 공지와 소식 중 최근 몇 건만 보여 주고 전체는 community.html 에 둔다."""
+    items = feed()[:limit]
+    if not items:
         return ""
-    items = sorted(NEWS, key=lambda x: x[0], reverse=True)[:limit]
     return '<ul class="news rv">%s</ul>' % "".join(news_row(x) for x in items)
 
+PHOTO_NAME = re.compile(r"^(\d{4}-\d{2}(?:-\d{2})?)_(.+)\.(?:jpe?g|png|webp)$", re.I)
+
+
+def community_photos():
+    """assets/img/community/ 를 읽어 사진 목록을 만든다. 새 사진은 폴더에 넣기만 하면 된다.
+    반환: (최신순 [(날짜, 파일명, 국문 설명)], 경고 목록)"""
+    folder = os.path.join(OUT, "assets", "img", "community")
+    photos, problems = [], []
+    if not os.path.isdir(folder):
+        return photos, problems
+    for fn in sorted(os.listdir(folder)):
+        if fn.startswith(".") or os.path.isdir(os.path.join(folder, fn)):
+            continue
+        nfc = unicodedata.normalize("NFC", fn)
+        m = PHOTO_NAME.match(nfc)
+        if not m or not 1 <= int(m.group(1)[5:7]) <= 12:
+            problems.append("사진 파일명 형식이 맞지 않아 건너뜁니다: %s" % fn)
+            continue
+        if fn != nfc:
+            problems.append("파일명이 자모 분리(NFD) 형태입니다. 배포 환경에서 이미지가 깨질 수 있습니다: %s" % fn)
+        photos.append((m.group(1), fn, m.group(2).replace("_", " ")))
+    photos.sort(key=lambda p: (p[0], p[1]), reverse=True)
+    return photos, problems
+
+
+def photo_figure(date, fn, ko):
+    en = PHOTO_CAPTIONS_EN.get(fn)
+    ko = html_escape(ko)
+    cap = t(ko, html_escape(en)) if en else t(ko, '<span lang="ko">%s</span>' % ko)
+    p = [int(x) for x in date.split("-")]
+    ko_d = ". ".join(str(x) for x in p) + "."
+    en_d = ("%s %d, %d" % (MONTHS_EN[p[1] - 1], p[2], p[0]) if len(p) > 2
+            else "%s %d" % (MONTHS_EN[p[1] - 1], p[0]))
+    url = "assets/img/community/" + quote(fn)
+    # alt 가 비어 있는 것은 의도이다. 바로 아래 figcaption 이 같은 설명을 이미 읽어 준다.
+    return ('<figure class="photo rv" data-item data-tags="photo">'
+            '<a href="%s" target="_blank" rel="noopener"><img src="%s" alt="" loading="lazy" decoding="async"></a>'
+            '<figcaption>%s%s</figcaption></figure>'
+            % (url, url, t(ko_d, en_d, "span", "photo__d"), cap))
 
 def area_cards():
     out = ""
@@ -1086,31 +1197,33 @@ def build_index():
         '<div class="stat"><div class="stat__n" data-count="%d">%d</div>%s</div>'
         % (n, n, t(ko, en, "div", "stat__l")) for n, ko, en in stats)
 
+    # 홈에는 한 줄 요약과 상세 페이지 링크만 둔다. 내용의 원본은 각 상세 페이지가 가진다.
+    # (아이콘, 제목ko, 제목en, 한 줄ko, 한 줄en, 링크, 링크문구ko, 링크문구en)
     why = [
         ("chart", "OM · Business Analytics 융합전공", "OM x Business Analytics",
-         "2020년 1학기부터 BA 융합과정을 운영합니다. 필수 6과목 포함 36학점을 이수하면 융합전공 학위를 받습니다.",
-         "Since spring 2020 we have offered a joint track with Business Analytics: 36 credits including six required BA courses."),
+         "2020년 1학기부터 운영하며, 필수 6과목 포함 36학점을 이수하면 융합전공 학위를 받습니다.",
+         "Offered since spring 2020. Thirty-six credits, including six required BA courses, lead to the joint degree.",
+         "courses.html#ba", "융합전공 보기", "See the joint track"),
         ("won", "장학 제도", "Financial support",
-         "교수 1인당 수업 조교 장학금(등록금 면제), 매 학기 BK 장학금, 관정·용운·배정 등 외부 장학금을 안내합니다.",
-         "A teaching-assistant scholarship (full tuition) per faculty member, BK21 stipends each semester, plus external fellowships."),
+         "수업 조교 장학금(등록금 면제), BK21 장학금, 외부 장학금을 안내합니다.",
+         "Teaching assistantships with full tuition waived, BK21 stipends, and external fellowships.",
+         "admissions.html#funding", "장학 제도 보기", "See funding"),
+        ("globe", "모든 수업을 우리말로", "All courses in Korean",
+         "모든 수업을 한국어로 진행합니다. 읽기 자료는 주로 국제 학술지의 영문 논문입니다.",
+         "All courses are taught in Korean. Most readings are English-language articles from international journals.",
+         "courses.html", "교과목 보기", "See the curriculum"),
         ("mic", "연구 세미나 시리즈", "Research seminar series",
-         "국내외 주요 대학의 연구자를 초빙하여 매 학기 세미나를 개최합니다. 학생은 이를 통해 최신 연구 동향을 파악하고 자신의 연구 주제를 구체화합니다.",
-         "Each semester we host scholars from leading universities at home and abroad, helping students find and sharpen their own topics."),
+         "국내외 연구자를 초빙한 세미나를 2019년 이후 %d회 열었습니다." % SEMINAR_TOTAL,
+         "%d talks by scholars from Korea and abroad since 2019." % SEMINAR_TOTAL,
+         "seminars.html", "세미나 보기", "See the seminars"),
     ]
     whyc = "".join(
-        '<article class="card card--hover rv" data-delay="%d"><div class="card__ico">%s</div>%s%s</article>'
-        % (i * 70, I[ic], t(ko, en, "h3"), t(dko, den, "p"))
-        for i, (ic, ko, en, dko, den) in enumerate(why))
+        '<article class="card card--hover rv" data-delay="%d"><div class="card__ico">%s</div>%s%s'
+        '<div style="margin-top:16px"><a class="chip" href="%s">%s%s</a></div></article>'
+        % (i * 70, I[ic], t(ko, en, "h3"), t(dko, den, "p"), href, I["arrow"], t(lko, len_))
+        for i, (ic, ko, en, dko, den, href, lko, len_) in enumerate(why))
 
     meth = "".join('<li>%s%s</li>' % (I["check"], t(ko, en)) for ko, en in METHODS)
-
-    acad = [("이연주", "Penn State University 교수| Penn State University Professor"), ("박민아", "Oberlin College 교수|Oberlin College Professor"),
-            ("김효진", "건국대학교 교수|Konkuk University Professor"), ("김수연", "한밭대학교 교수|Hanbat National University Professor"),
-            ("정대훈", "University of Florida 박사과정|University of Florida Ph.D. candidate"), ("복준혁", "동북재경대학 교수|Dongbei Univ. of Finance & Economics Professor")]
-    acad_html = ""
-    for nm, aff in acad:
-        ko, en = (aff.split("|") + [aff])[:2] if "|" in aff else (aff, aff)
-        acad_html += '<li>%s<span><b>%s</b> &middot; %s</span></li>' % (I["cap"], nm, t(ko, en))
 
     body = '''
 <section class="hero">
@@ -1162,6 +1275,14 @@ def build_index():
  </div>
 </section>
 
+<section class="sec sec--soft" style="padding-top:0">
+ <div class="wrap">
+  <div class="rv">
+   %s
+  </div>
+ </div>
+</section>
+
 <section class="sec">
  <div class="wrap">
   <div class="sechead sechead--row">
@@ -1170,8 +1291,8 @@ def build_index():
    </div>
    <a class="btn btn--outline rv" href="admissions.html">%s%s</a>
   </div>
-  <div class="grid g3">%s</div>
- </div>
+  <div class="grid g4">%s</div>
+   </div>
 </section>
 
 <section class="sec sec--soft">
@@ -1207,27 +1328,12 @@ def build_index():
     %s
     %s
    </div>
-   <a class="btn btn--outline rv" href="news.html">%s%s</a>
+   <a class="btn btn--outline rv" href="community.html">%s%s</a>
   </div>
   %s
  </div>
 </section>
 
-<section class="sec">
- <div class="wrap">
-  <div class="split">
-   <div class="rv">
-    %s
-    %s
-    <ul class="flist" style="margin-top:24px">%s</ul>
-    <div style="margin-top:28px"><a class="btn btn--outline" href="alumni.html">%s%s</a></div>
-   </div>
-   <div class="rv" data-delay="120">
-    %s
-   </div>
-  </div>
- </div>
-</section>
 
 <section class="sec sec--tight">
  <div class="wrap">
@@ -1277,31 +1383,27 @@ def build_index():
  t("구매와 협력업체 전략에서 지속가능성까지, 가치사슬 전반을 다룹니다.",
    "From sourcing and supplier strategy to sustainability, across the whole value chain.", "p", "dek"),
  area_cards(),
+  testimonial_excerpt(TESTIMONIALS[0]),
+
  t("이곳에서 공부하는 방식", "What studying here looks like", "h2"),
  t("입학 안내 자세히 보기", "See admissions"), I["arrow"], whyc,
  t("전공 교수진", "Our faculty", "h2"),
  t("여섯 분의 전임 교수와 두 분의 명예교수가 함께합니다.",
    "Six full-time faculty members and two professors emeriti.", "p", "dek"),
  t("전체 보기", "View all"), I["arrow"],
- "".join(fcard(f, i * 60) for i, f in enumerate(FACULTY)),
+ "".join(fcard_brief(f, i * 60) for i, f in enumerate(FACULTY)),
  t("매 학기 열리는 <span class=\"thin\">연구 세미나</span>", "A seminar <span class=\"thin\">every few weeks</span>", "h2"),
  t("본 전공은 국내외 주요 대학의 연구자를 초빙하여 연구 발표 시리즈를 운영합니다. 석·박사 과정 학생은 이를 통해 최신 연구 동향을 파악하고 자신의 연구 주제를 선정·발전시킵니다.",
    "We invite scholars from leading universities in Korea and abroad. For our graduate students the series is where research trends become visible and dissertation topics take shape.",
    "p", "body-copy"),
  t("전체 일정 보기", "All seminars"), I["arrow"],
  seminar_list(SEMINARS[0][1][-6:]),
- t("소식", "Highlights", "h2"),
- t("교수와 학생, 졸업생의 소식을 한곳에 모았습니다.",
-   "News from our faculty, students, and alumni in one place.", "p", "dek"),
- t("전체 소식 보기", "All news"), I["arrow"],
+ t("공지와 소식", "Notices and news", "h2"),
+ t("공지사항과 교수·학생·졸업생 소식을 한곳에 모았습니다.",
+   "Notices and news from our faculty, students, and alumni in one place.", "p", "dek"),
+ t("커뮤니티 보기", "Visit the community"), I["arrow"],
  news_block(),
- t("졸업 후 <span class=\"thin\">진로</span>", "Where our graduates <span class=\"thin\">go</span>", "h2"),
- t("졸업생들은 국내외 기업의 프로세스 설계와 공급사슬 관리, 컨설팅, 연구소, 그리고 학계로 진출합니다. 학계로 진출한 동문들은 국내외 대학에서 연구와 교육을 이어가고 있습니다.",
-   "Our graduates work in process design and supply chain management at Korean and multinational firms, in consulting, in research institutes, and in academia, in Korea and abroad.",
-   "p", "body-copy"),
- acad_html,
- t("졸업생 현황 보기", "Alumni placements"), I["arrow"],
- testimonial_excerpt(TESTIMONIALS[0]),
+
  t("열정을 갖춘 석·박사 과정 학생을 모집합니다",
    "We are looking for students with a genuine appetite for research", "h2"),
  t("입학을 위해 필요한 지식은 대학원 수업에서 처음부터 배울 수 있습니다. 학부 전공은 무관합니다. 필요한 것은 주요 연구 분야에 대한 열정입니다.",
@@ -1348,24 +1450,6 @@ def build_faculty():
 
 # ============================================================== admissions
 def build_admissions():
-    careers = [
-     ("cube", "기업", "Industry",
-      "국내 및 다국적 기업의 프로세스 디자인 및 관리, 호텔·레스토랑·병원 등 서비스 경영, 신제품개발, 구매, 물류 및 유통, 글로벌 공급사슬관리, 시스템 통합 등",
-      "Process design and management, service management in hotels, restaurants, and hospitals, new product development, sourcing, logistics and distribution, global supply chain management, and systems integration."),
-     ("gear", "컨설팅", "Consulting",
-      "국내외 컨설팅업체에서 프로세스 개선, 서비스 경영, 신제품 개발 등의 분야를 담당하는 컨설턴트",
-      "Consultants at Korean and global firms working on process improvement, service management, and new product development."),
-     ("book", "연구직", "Research institutes",
-      "대기업 경영·경제 연구소 및 국책 연구소의 연구원",
-      "Researchers at corporate economic research centers and government-funded research institutes."),
-     ("cap", "학계", "Academia",
-      "국내외 박사과정 진학 후 교수직 및 연구직 진출",
-      "Ph.D. study in Korea or abroad, then faculty and research positions."),
-    ]
-    ccards = "".join(
-      '<article class="card card--hover rv" data-delay="%d"><div class="card__ico">%s</div>%s%s</article>'
-      % (i * 70, I[ic], t(ko, en, "h3"), t(dko, den, "p"))
-      for i, (ic, ko, en, dko, den) in enumerate(careers))
 
     prep = [
       ("경영학 및 인문·사회과학(경제학·사회학·심리학) 기초 지식",
@@ -1401,53 +1485,15 @@ def build_admissions():
     body += '''
 <section class="sec">
  <div class="wrap">
-  <div class="split">
-   <div>
-    %s
-    %s
-    <ul class="flist rv" style="margin-top:22px">%s</ul>
-   </div>
-   <div class="rv" data-delay="120">
-    <div class="card" style="padding:32px">
-     %s
-     %s
-     <ul class="flist" style="margin-top:18px">%s</ul>
-    </div>
-   </div>
-  </div>
- </div>
-</section>
-
-<section class="sec sec--soft">
- <div class="wrap">
   <div class="sechead">
    %s
    %s
   </div>
-  <div class="grid g4">%s</div>
+  <ul class="flist rv">%s</ul>
  </div>
 </section>
 
-<section class="sec">
- <div class="wrap">
-  <div class="split">
-   <div class="rv">
-    %s
-    %s
-    <div style="margin-top:26px"><a class="btn btn--outline" href="courses.html">%s%s</a></div>
-   </div>
-   <div class="rv" data-delay="120">
-    <div class="card" style="padding:32px">
-     <div class="card__ico">%s</div>
-     %s
-     %s
-    </div>
-   </div>
-  </div>
- </div>
-</section>
-
-<section class="sec sec--soft">
+<section class="sec sec--soft" id="funding">
  <div class="wrap">
   <div class="sechead sechead--row">
    <div>%s</div>
@@ -1468,6 +1514,18 @@ def build_admissions():
  </div>
 </section>
 
+<section class="sec sec--soft sec--tight">
+ <div class="wrap">
+  <div class="sechead sechead--row" style="margin-bottom:0">
+   <div>
+    %s
+    %s
+   </div>
+   <a class="btn btn--outline rv" href="alumni.html#career">%s%s</a>
+  </div>
+ </div>
+</section>
+
 <section class="sec sec--tight">
  <div class="wrap">
   <div class="cta rv">
@@ -1484,30 +1542,11 @@ def build_admissions():
  </div>
 </section>
 ''' % (
- t("주요 연구 분야", "What we work on", "h2"),
- t("공급사슬 관리, 서비스 관리, 기술경영, 인공지능, ESG와 지속가능 경영, 공급사슬 애널리틱스를 중심으로 연구합니다.",
-   "Supply chain management, service management, technology management, artificial intelligence, ESG and sustainability, and supply chain analytics.",
-   "p", "dek"),
- "".join('<li>%s%s</li>' % (I["check"], t(ko, en)) for _, ko, en, _, _ in AREAS),
- t("입학을 위해 필요한 지식", "What you need to bring", "h3"),
+ t("입학을 위해 필요한 지식", "What you need to bring", "h2"),
  t("주요 연구 분야에 대한 열정 하나면 충분합니다. 나머지 지식은 대학원 수업에서 처음부터 배웁니다. 다만 아래 항목을 미리 준비해 두면 시작이 한결 수월합니다.",
-   "Enthusiasm for the questions above is the requirement. Everything else is taught from scratch. Still, the following make the first year easier.",
+   "Enthusiasm for the questions we work on is the requirement. Everything else is taught from scratch. Still, the following make the first year easier.",
    "p", "dek"),
  prep_html,
- t("졸업 후 진로", "Where our graduates go", "h2"),
- t("본 전공에서 석사 30명과 박사 30명이 학위를 받았습니다. 이 가운데 20명은 대학에 교수로 재직하고 있으며, 나머지는 기업과 컨설팅, 연구기관, 군 등에 진출하였습니다.",
-   "Thirty master's and thirty doctoral students have graduated from the area. Twenty of them now teach at universities; the rest work in industry, consulting, research institutes, and the armed forces.",
-   "p", "dek"),
- ccards,
- t("Business Analytics 융합전공", "A joint track with Business Analytics", "h2"),
- t("최근 학계와 실무에서 급속히 주목받는 Business Analytics 역량을 갖추도록 2020년 1학기부터 BA 융합 과정을 운영하고 있습니다. OM 전공의 졸업 요건을 충족하면서 BA 전공 필수 6과목을 포함해 총 36학점(방법론 9학점 포함)을 이수하면 'OM / BA 융합전공' 학위를 받습니다.",
-   "Since spring 2020 we have run a joint track with Business Analytics. Students who meet the OM degree requirements and complete 36 credits, including six required BA courses and nine credits of methods, receive the joint OM / BA degree.",
-   "p", "body-copy"),
- t("교과목 자세히 보기", "See the curriculum"), I["arrow"],
- I["chart"],
- t("BA 전공 필수 과목", "Required BA courses", "h3"),
- t("Business Analytics 1 &middot; Business Analytics 2 &middot; Data Management for BA &middot; Web &amp; Text Analytics &middot; AI for Business &middot; BA Capstone",
-   "Business Analytics 1 &middot; Business Analytics 2 &middot; Data Management for BA &middot; Web &amp; Text Analytics &middot; AI for Business &middot; BA Capstone", "p"),
  t("장학 제도", "Scholarships and funding", "h2"),
  t("대학원 장학 안내", "Graduate school funding"), I["ext"],
  sch_html,
@@ -1518,6 +1557,13 @@ def build_admissions():
  t("전형 일정과 어학 요건, 등록금처럼 학기마다 바뀌는 사항은 연세대학교 일반대학원 공고를 확인해 주시기 바랍니다.",
    "For items that change each semester, such as the application timeline, language requirements, and tuition, please refer to the Yonsei Graduate School announcements."),
  t("일반대학원 입시 안내", "Graduate School admissions"),
+ t("졸업 후 진로", "Where our graduates go", "h2"),
+ t("졸업생 %d명 가운데 %d명이 대학에 교수로 재직하고 있으며, 나머지는 기업과 컨설팅, 연구기관, 군 등에 진출하였습니다."
+   % (len(ALUMNI_MS) + len(ALUMNI_PHD), academic_alumni_count()),
+   "%d of the %d graduates now teach at universities; the rest work in industry, consulting, research institutes, and the armed forces."
+   % (academic_alumni_count(), len(ALUMNI_MS) + len(ALUMNI_PHD)),
+   "p", "dek"),
+ t("졸업생 진로 보기", "See alumni careers"), I["arrow"],
  net("cta__net"),
  t("석·박사 과정 문의", "Contact us", "h2"),
  t("오퍼레이션 전공 석·박사 과정에 대한 문의는 정승환 교수(seunghwan.jung@yonsei.ac.kr)에게 연락 주시기 바랍니다.",
@@ -1689,7 +1735,7 @@ def build_courses():
                 I["cap"], t("박사과정 종합시험", "Ph.D. comprehensive exam", "h3"), li(exam_phd),
                 t("박사 졸업 요건", "Ph.D. thesis requirement", "h4"), li(grad_phd)))
 
-    body += ('<section class="sec"><div class="wrap"><div class="split">'
+    body += ('<section class="sec" id="ba"><div class="wrap"><div class="split">'
              '<div class="rv">%s%s%s'
              '<div style="margin-top:26px;display:flex;gap:10px;flex-wrap:wrap">'
              '<a class="btn btn--outline" href="https://ysb.yonsei.ac.kr/ysb/ms-phd/curriculum.do" target="_blank" rel="noopener">%s%s</a>'
@@ -1795,6 +1841,46 @@ def placement_summary():
         for n, ko, en in stats)
     return '''<div class="pgrid rv">%s</div>''' % cells
 
+def academic_alumni_count():
+    """대학 교수로 재직 중인 졸업생 수. placement_summary() 와 같은 판별 기준이다."""
+    return sum(1 for a in ALUMNI_MS + ALUMNI_PHD if "교수" in a[5] or "Professor" in a[6])
+
+
+def career_cards():
+    return "".join(
+        '<article class="card card--hover rv" data-delay="%d"><div class="card__ico">%s</div>%s%s</article>'
+        % (i * 70, I[ic], t(ko, en, "h3"), t(dko, den, "p"))
+        for i, (ic, ko, en, dko, den) in enumerate(CAREERS))
+
+
+def academic_list():
+    return '<ul class="flist">%s</ul>' % "".join(
+        '<li>%s<span><b>%s</b> &middot; %s</span></li>' % (I["cap"], pname(nm), t(ko, en))
+        for nm, ko, en in ACADEMIC_HIGHLIGHTS)
+
+
+def career_section():
+    """졸업생 페이지의 '졸업 후 진로'. 진로 유형 카드와 학계 진출 동문 목록."""
+    return '''
+<section class="sec sec--soft" id="career">
+ <div class="wrap">
+  <div class="sechead">
+   %s
+   %s
+  </div>
+  <div class="grid g4">%s</div>
+  <div class="rv" style="margin-top:56px">
+   <h3 class="reqh">%s</h3>
+   %s
+  </div>
+ </div>
+</section>
+''' % (t("졸업 후 진로", "Where our graduates go", "h2"),
+       t("졸업생이 진출한 분야를 유형별로 정리했습니다.",
+         "Where graduates have gone, grouped by type of work.", "p", "dek"),
+       career_cards(),
+       t("학계 진출 동문", "Alumni in academia", "span"),
+       academic_list())
 
 def build_alumni():
     # 박사과정은 논문 주제를 아직 모으지 못했다. 30행이 전부 줄표가 되면
@@ -1833,6 +1919,7 @@ def build_alumni():
                  "%d master's and %d doctoral students have come through. %d now teach at universities; the rest are in industry, consulting, research institutes, and the armed forces."
                  % (len(ALUMNI_MS), len(ALUMNI_PHD),
                     sum(1 for a in ALUMNI_MS + ALUMNI_PHD if "교수" in a[5] or "Professor" in a[6])))
+    body += career_section()
     body += '''
 <section class="sec" data-scope="alumni">
  <div class="wrap">
@@ -1877,35 +1964,63 @@ def build_alumni():
          "Alumni | Operations Management, Yonsei School of Business",
          "오퍼레이션 전공 석·박사 졸업생의 논문 주제와 진로 현황, 그리고 졸업생 추천 글.", body)
 
-# ============================================================== news
-def build_news():
-    items = sorted(NEWS, key=lambda x: x[0], reverse=True)
-    years = []
-    for it in items:
-        y = int(it[0][:4])
-        if not years or years[-1][0] != y:
-            years.append((y, []))
-        years[-1][1].append(it)
+# ============================================================== community
+def build_community():
+    news = sorted(NEWS, key=lambda x: x[0], reverse=True)
+    notices = sorted([(ym, "", ko, en, url) for ym, ko, en, url in NOTICES],
+                     key=lambda x: x[0], reverse=True)
+    photos, problems = community_photos()
 
-    group_tpl = ('<div class="ygroup rv">\n'
+    group_tpl = ('<div class="ygroup rv" data-group>\n'
                  ' <h3>%s<span class="cnt">%d %s</span></h3>\n'
-                 ' <ul class="news">%s</ul>\n'
+                 ' %s\n'
                  '</div>')
-    groups = "".join(group_tpl % (t("%d년" % y, "%d" % y, "span"), len(rows),
-                                  t("건", "items", "span"),
-                                  "".join(news_row(r) for r in rows))
-                     for y, rows in years)
+    kinds, groups = [], ""
 
-    body = phead("News", "소식", "News",
-                 t("교수 · 학생 · 졸업생 소식 %d건" % len(NEWS),
-                   "%d items from faculty, students, and alumni" % len(NEWS)),
-                 "오퍼레이션 전공 구성원의 수상과 임용, 연구 성과, 학위 수여, 전공 행사 소식입니다.",
-                 "Honors and appointments, research, degrees, and program news from across the area.")
-    body += ('\n<section class="sec">\n <div class="wrap">\n  %s\n </div>\n</section>\n' % groups)
-    page("news.html",
-         "소식 | 연세대 경영대학 오퍼레이션 전공",
-         "News | Operations Management, Yonsei School of Business",
-         "연세대 경영대학 오퍼레이션 전공 교수, 학생, 졸업생 소식.", body)
+    if notices:
+        kinds.append(("notice", "공지사항", "Notices"))
+        groups += group_tpl % (t("공지사항", "Notices", "span"), len(notices), t("건", "items", "span"),
+                               '<ul class="news">%s</ul>' % "".join(news_row(r, "notice") for r in notices))
+    if news:
+        kinds.append(("news", "소식", "News"))
+        by_year = {}
+        for it in news:
+            by_year.setdefault(int(it[0][:4]), []).append(it)
+        for y, rows in sorted(by_year.items(), reverse=True):
+            groups += group_tpl % (t("%d년 소식" % y, "%d news" % y, "span"), len(rows), t("건", "items", "span"),
+                                   '<ul class="news">%s</ul>' % "".join(news_row(r, "news") for r in rows))
+    if photos:
+        kinds.append(("photo", "사진", "Photos"))
+        groups += group_tpl % (t("사진", "Photos", "span"), len(photos), t("장", "photos", "span"),
+                               '<div class="gallery">%s</div>' % "".join(photo_figure(*p) for p in photos))
+
+    # 종류가 둘 이상일 때만 필터 줄을 그린다. 비어 있는 종류의 버튼은 만들지 않는다.
+    toolbar = ""
+    if len(kinds) > 1:
+        segs = ('<button class="seg" type="button" data-filter="all" aria-pressed="true">%s</button>'
+                % t("전체", "All"))
+        segs += "".join('<button class="seg" type="button" data-filter="%s" aria-pressed="false">%s</button>'
+                        % (k, t(ko, en)) for k, ko, en in kinds)
+        toolbar = '<div class="toolbar rv"><div class="segs">%s</div></div>' % segs
+
+    counts = [("공지 %d건" % len(notices), "%d notices" % len(notices), notices),
+              ("소식 %d건" % len(news), "%d news items" % len(news), news),
+              ("사진 %d장" % len(photos), "%d photos" % len(photos), photos)]
+    sub = t(" · ".join(k for k, _, d in counts if d) or "게시물 준비 중",
+            ", ".join(e for _, e, d in counts if d) or "Coming soon")
+
+    body = phead("Community", "커뮤니티", "Community", sub,
+                 "공지사항과 전공 소식, 행사 사진을 한곳에 모았습니다.",
+                 "Notices, news, and event photos from the area in one place.")
+    body += ('\n<section class="sec" data-scope="community">\n <div class="wrap">\n  %s\n  %s\n'
+             '  <div class="empty" data-empty style="display:none">%s</div>\n </div>\n</section>\n'
+             % (toolbar, groups, t("표시할 게시물이 없습니다.", "Nothing to show.")))
+    page("community.html",
+         "커뮤니티 | 연세대 경영대학 오퍼레이션 전공",
+         "Community | Operations Management, Yonsei School of Business",
+         "연세대 경영대학 오퍼레이션 전공의 공지사항, 소식, 행사 사진.", body)
+    for msg in problems:
+        print("  [확인할 것] %s" % msg)
 
 
 # ============================================================== seminars
@@ -2021,7 +2136,8 @@ if __name__ == "__main__":
     build_students()
     build_alumni()
     build_seminars()
-    build_news()
+    build_community()
+    # build_news()
     print("done. %d seminars, %d alumni." % (SEMINAR_TOTAL, len(ALUMNI_MS) + len(ALUMNI_PHD)))
     guard()
     guard_headings()
