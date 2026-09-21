@@ -654,13 +654,14 @@ def speaker(ko, rko, ren, ctx=None):
 #   논문 URL 은 선택이다. 있는 사람만 튜플 맨 끝(8번째 칸)에 문자열로 덧붙인다. 예)
 #     ("조효원",2026,"민순홍","","","","","https://dcollection.yonsei.ac.kr/..."),
 #   http:// 또는 https:// 로 시작해야 한다. 없는 사람의 튜플은 그대로 둔다.
-#   표에는 URL 이 하나라도 있는 표에만 '논문' 열이 생긴다. 모두 비어 있으면 열이 나오지 않는다.
+#   URL 이 있으면 '논문 주제' 글자에 링크가 걸린다. 주제가 비어 있으면 걸 곳이 없으므로 주제도 함께 적는다.
+
 
 ALUMNI_MS = [
- ("조효원",2026,"민순홍","","","","", "https://www.yonsei.ac.kr/sc/index.do"),
+ ("조효원",2026,"민순홍","","","",""),
  ("박정수",2026,"허대식","","","",""),
  ("안민정",2026,"정승환","","","UCLA 경영대학원 박사과정","Ph.D. student, UCLA Anderson School of Management"),
- ("L. Jin",2026,"민순홍","인적자원 지향성","Human resource orientation","古茗(Good me)","Good Me (Guming)"),
+ ("L. Jin",2026,"민순홍","인적자원 지향성","Human resource orientation","古茗(Good me)","Good Me (Guming)", "https://www.yonsei.ac.kr/sc/index.do"),
  ("손지원",2026,"허대식","ESG 디커플링","ESG decoupling","아성다이소","Daiso Asung"),
  ("H. Yan",2025,"정승환","시장 경쟁","Market competition","SK하이닉스","SK hynix"),
  ("이세진",2025,"허대식","ESG 디커플링","ESG decoupling","대한민국 해군","ROK Navy"),
@@ -2024,27 +2025,35 @@ def thesis_url(a):
     url = thesis_raw(a)
     return url if url.startswith(("http://", "https://")) else ""
 
-
-def thesis_link(a):
+def thesis_topic(a):
+    """논문 주제 칸. 논문 URL 이 있으면 주제 글자 자체에 링크를 건다. 주제가 비어 있으면 줄표만 그린다."""
+    tko, ten = a[3], a[4]
+    if not tko:
+        return '<span style="color:var(--muted)">&mdash;</span>'
+    label = t(tko, ten)
     url = thesis_url(a)
     if not url:
-        return ""
+        return label
     return ('<a class="tlink" href="%s" target="_blank" rel="noopener noreferrer">%s%s</a>'
-            % (html_escape(url, quote=True), t("논문 보기", "View thesis"), I["ext"]))
-
+            % (html_escape(url, quote=True), label, I["ext"]))
 
 def alumni_checks():
-    """논문 URL 칸을 점검한다. 형식이 틀린 주소와 칸 수 초과를 알려 준다."""
+    """논문 URL 칸을 점검한다. 링크가 걸리지 않는 경우를 빌드 때 알려 준다."""
     linked = 0
-    for a in ALUMNI_MS + ALUMNI_PHD:
-        if len(a) > 8:
-            print("  [확인할 것] 졸업생 튜플의 칸이 너무 많습니다 (%s)" % a[0])
-        if not thesis_raw(a):
-            continue
-        if thesis_url(a):
-            linked += 1
-        else:
-            print("  [확인할 것] 논문 주소는 http 또는 https 로 시작해야 합니다: %s (%s)" % (thesis_raw(a), a[0]))
+    for data, shows_topic in ((ALUMNI_MS, True), (ALUMNI_PHD, True)):
+        for a in data:
+            if len(a) > 8:
+                print("  [확인할 것] 졸업생 튜플의 칸이 너무 많습니다 (%s)" % a[0])
+            if not thesis_raw(a):
+                continue
+            if not thesis_url(a):
+                print("  [확인할 것] 논문 주소는 http 또는 https 로 시작해야 합니다: %s (%s)" % (thesis_raw(a), a[0]))
+            elif not shows_topic:
+                print("  [확인할 것] 박사 표는 논문 주제 열이 없어 링크가 나오지 않습니다 (%s). PHD_SHOW_TOPIC 을 확인하세요." % a[0])
+            elif not a[3]:
+                print("  [확인할 것] 논문 주제가 비어 있어 링크를 걸 수 없습니다 (%s). 주제를 함께 적어 주세요." % a[0])
+            else:
+                linked += 1
     if linked:
         print("  논문 링크 %d건 연결" % linked)
 
@@ -2052,28 +2061,22 @@ def build_alumni():
     # 박사과정은 논문 주제를 아직 모으지 못했다. 30행이 전부 줄표가 되면
     # 칸이 비었다는 사실만 크게 보이므로, 그럴 때는 열 자체를 내린다.
     # 주제를 채워 넣으면 show_topic=True 로 되돌리면 된다.
-    def rows(data, tag, show_topic=True, show_thesis=False):
+    def rows(data, tag, show_topic=True):
         out = ""
         for a in data:
             nm, yr, adv, tko, ten, pko, pen = a[:7]      # 8번째 칸(논문 URL)은 선택이라 따로 읽는다
             place = t(pko, pen) if pko else '<span style="color:var(--muted)">&mdash;</span>'
-            topic = ""
-            if show_topic:
-                topic = '<td>%s</td>' % (t(tko, ten) if tko
-                                         else '<span style="color:var(--muted)">&mdash;</span>')
-            thesis = '<td class="lk">%s</td>' % thesis_link(a) if show_thesis else ""
+            topic = '<td>%s</td>' % thesis_topic(a) if show_topic else ""
             out += ('<tr data-item data-tags="%s"><td class="nm">%s</td><td class="yr">%d</td>'
-                    '<td class="yr">%s</td>%s%s<td>%s</td></tr>'
-                    % (tag, pname(nm, pen), yr, t(adv, ADV.get(adv, adv)), topic, thesis, place))
+                    '<td class="yr">%s</td>%s<td>%s</td></tr>'
+                    % (tag, pname(nm, pen), yr, t(adv, ADV.get(adv, adv)), topic, place))
         return out
 
     def block(title_ko, title_en, data, tag, show_topic=True):
-        show_thesis = any(thesis_url(a) for a in data)     # 링크가 하나라도 있는 표에만 열을 그린다
         cols = [t("이름", "Name"), t("졸업 연도", "Year"), t("지도교수", "Advisor")]
         if show_topic:
             cols.append(t("논문 주제", "Thesis topic"))
-        if show_thesis:
-            cols.append(t("논문", "Thesis"))
+
         cols.append(t("근무지", "Placement"))
 
         head = '<thead><tr>%s</tr></thead>' % "".join("<th>%s</th>" % c for c in cols)
@@ -2081,7 +2084,7 @@ def build_alumni():
  <h3>%s<span class="cnt">%d</span></h3>
  <div class="tablewrap"><div class="tablescroll"><table>%s<tbody>%s</tbody></table></div></div>
 
-</div>''' % (t(title_ko, title_en, "span"), len(data), head, rows(data, tag, show_topic, show_thesis))
+</div>''' % (t(title_ko, title_en, "span"), len(data), head, rows(data, tag, show_topic))
 
     body = phead("Alumni", "졸업생 현황", "Alumni",
                  t("1984년 첫 박사 배출 이후 %d명" % (len(ALUMNI_MS) + len(ALUMNI_PHD)),
@@ -2124,7 +2127,7 @@ def build_alumni():
 ''' % (I["search"], t("전체", "All"), t("석사과정", "M.S."), t("박사과정", "Ph.D."),
        placement_summary(),
        block("석사과정", "M.S. program", ALUMNI_MS, "ms"),
-       block("박사과정", "Ph.D. program", ALUMNI_PHD, "phd", show_topic=False),
+       block("박사과정", "Ph.D. program", ALUMNI_PHD, "phd", show_topic=True),
        t("검색 결과가 없습니다.", "No matching records."),
        reviewed_note(),
        t("졸업생 추천 글", "In an alumnus's words" if len(TESTIMONIALS) == 1 else "In our alumni's words", "h2"),

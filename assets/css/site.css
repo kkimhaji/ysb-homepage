@@ -676,14 +676,13 @@ a.stu__a:hover .stu__ph{outline:2px solid var(--brand);outline-offset:2px}
 @media(max-width:980px){.sgrid{grid-template-columns:repeat(3,1fr)}}
 @media(max-width:640px){.sgrid{grid-template-columns:repeat(2,1fr)}}
 
-/* ===== 졸업생 표의 논문 링크 ===== */
-td.lk{white-space:nowrap}
+/* ===== 졸업생 표: 논문 주제에 거는 링크 ===== */
 .tlink{
-  display:inline-flex;align-items:center;gap:6px;font-size:13.5px;font-weight:600;color:var(--brand);
+  color:var(--text);font-weight:600;
   text-decoration:underline;text-decoration-color:var(--line);text-underline-offset:4px;
 }
-.tlink:hover{text-decoration-color:var(--brand)}
-.tlink svg{width:13px;height:13px;opacity:.7}
+.tlink:hover{color:var(--brand);text-decoration-color:var(--brand)}
+.tlink svg{width:13px;height:13px;margin-left:6px;vertical-align:-2px;opacity:.6}
 
 /* ===== 졸업생 도넛 차트 ===== */
 .donut{max-width:320px}
