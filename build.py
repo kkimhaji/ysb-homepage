@@ -9,7 +9,7 @@
 내용을 고치려면 아래 DATA 영역을 수정한 뒤 다시 실행하세요.
 (HTML 파일을 직접 수정해도 되지만, 그 경우 build.py 는 다시 실행하지 마세요.)
 """
-import io, os, re, unicodedata
+import io, os, re, math, unicodedata
 from urllib.parse import quote
 from html import escape as html_escape
 from decimal import Decimal, ROUND_HALF_UP
@@ -655,7 +655,7 @@ def speaker(ko, rko, ren, ctx=None):
 #     ("조효원",2026,"민순홍","","","","","https://dcollection.yonsei.ac.kr/..."),
 #   http:// 또는 https:// 로 시작해야 한다. 없는 사람의 튜플은 그대로 둔다.
 #   표에는 URL 이 하나라도 있는 표에만 '논문' 열이 생긴다. 모두 비어 있으면 열이 나오지 않는다.
-# 진로 분류 필요함
+
 ALUMNI_MS = [
  ("조효원",2026,"민순홍","","","","", "https://www.yonsei.ac.kr/sc/index.do"),
  ("박정수",2026,"허대식","","","",""),
@@ -1916,21 +1916,26 @@ def build_students():
 def placement_summary():
     """박사 졸업생 중 대학에 자리 잡은 인원을 데이터에서 직접 센다.
     손으로 적은 숫자는 반드시 뒤처지므로 세지 말고 계산한다."""
-    academic = [a for a in ALUMNI_PHD + ALUMNI_MS if "교수" in a[5] or "Professor" in a[6]]
+
     stats = [
         (len(ALUMNI_MS) + len(ALUMNI_PHD), "석·박사 배출", "M.S. and Ph.D. graduates"),
         (len(ALUMNI_PHD), "박사 학위", "Ph.D. degrees"),
         (len(ALUMNI_MS), "석사 학위", "M.S. degrees"),
-        (len(academic), "대학 교수 임용", "faculty appointments"),
-    ]
+        (academic_alumni_count(), "대학 교수 임용", "faculty appointments"),
+            ]
     cells = "".join(
         '<div class="pstat"><div class="pstat__n" data-count="%d">%d</div>%s</div>' % (n, n, t(ko, en, "div", "pstat__l"))
         for n, ko, en in stats)
     return '''<div class="pgrid rv">%s</div>''' % cells
 
-def academic_alumni_count():
-    """대학 교수로 재직 중인 졸업생 수. placement_summary() 와 같은 판별 기준이다."""
-    return sum(1 for a in ALUMNI_MS + ALUMNI_PHD if "교수" in a[5] or "Professor" in a[6])
+def is_academic(a):
+    """졸업생 튜플 하나가 대학 교수로 재직 중인지. 판별 기준은 여기 한 곳에만 둔다."""
+    return "교수" in a[5] or "Professor" in a[6]
+
+
+def academic_alumni_count(data=None):
+    """대학 교수로 재직 중인 졸업생 수. data 를 주지 않으면 석사와 박사 전체."""
+    return sum(1 for a in (ALUMNI_MS + ALUMNI_PHD if data is None else data) if is_academic(a))
 
 
 def career_cards():
@@ -1945,6 +1950,38 @@ def academic_list():
         '<li>%s<span><b>%s</b> &middot; %s</span></li>' % (I["cap"], pname(nm), t(ko, en))
         for nm, ko, en in ACADEMIC_HIGHLIGHTS)
 
+def placement_donut():
+    """박사 졸업생 중 대학 교수로 재직하는 비율을 보여 주는 도넛 차트.
+    차트 라이브러리 없이 SVG 를 직접 만든다. 색은 CSS 클래스(.donut__*)에서 변수로 정하므로
+    라이트/다크 모드가 자동으로 따른다. 수치는 SVG 가 아니라 범례 글자에 있다.
+    '그 외' 에는 근무지를 아직 확인하지 못한 졸업생도 들어 있다."""
+    total = len(ALUMNI_PHD)
+    if not total:
+        return ""
+    n = academic_alumni_count(ALUMNI_PHD)
+    pct = int((Decimal(n) * 100 / Decimal(total)).quantize(Decimal("1"), rounding=ROUND_HALF_UP))
+    circ = 2 * math.pi * 48         # 반지름 48 인 원의 둘레
+    arc = circ * n / total          # 대학 교수 몫의 호 길이
+    return ('<div class="donut rv">'
+            '<div class="donut__fig">'
+            '<svg class="donut__svg" viewBox="0 0 120 120" aria-hidden="true" focusable="false">'
+            '<circle class="donut__rest" cx="60" cy="60" r="48"/>'
+            '<circle class="donut__arc" cx="60" cy="60" r="48" stroke-dasharray="%.2f %.2f" transform="rotate(-90 60 60)"/>'
+            '</svg>'
+            '<div class="donut__c"><b>%d%%</b>%s</div>'
+            '</div>'
+            '<ul class="donut__lg">'
+            '<li><span class="donut__sw donut__sw--a"></span>%s%s</li>'
+            '<li><span class="donut__sw"></span>%s%s</li>'
+            '</ul>'
+            '<p class="donut__note">%s</p>'
+            '</div>') % (
+        arc, circ, pct,
+        t("대학 교수 재직", "On university faculty", "span"),
+        t("대학 교수 재직", "Faculty at universities", "span"), t("%d명" % n, "%d" % n, "b"),
+        t("그 외 · 미확인", "Others or not confirmed", "span"), t("%d명" % (total - n), "%d" % (total - n), "b"),
+        t("박사 졸업생 %d명 기준" % total, "Based on %d Ph.D. graduates" % total, "span"))
+
 
 def career_section():
     """졸업생 페이지의 '졸업 후 진로'. 진로 유형 카드와 학계 진출 동문 목록."""
@@ -1956,9 +1993,15 @@ def career_section():
    %s
   </div>
   <div class="grid g4">%s</div>
-  <div class="rv" style="margin-top:56px">
-   <h3 class="reqh">%s</h3>
-   %s
+ <div class="split" style="margin-top:56px;align-items:start">
+   <div>
+    <h3 class="reqh">%s</h3>
+    %s
+   </div>
+   <div class="rv">
+    <h3 class="reqh">%s</h3>
+    %s
+   </div>
   </div>
  </div>
 </section>
@@ -1966,6 +2009,8 @@ def career_section():
        t("졸업생이 진출한 분야를 유형별로 정리했습니다.",
          "Where graduates have gone, grouped by type of work.", "p", "dek"),
        career_cards(),
+       t("박사 졸업생의 학계 진출 비율", "Ph.D. alumni in academia", "span"),
+        placement_donut(),
        t("학계 진출 동문", "Alumni in academia", "span"),
        academic_list())
 
@@ -2043,10 +2088,10 @@ def build_alumni():
                    "%d graduates since the first Ph.D. in 1984" % (len(ALUMNI_MS) + len(ALUMNI_PHD))),
                  "본 전공에서 석사 %d명과 박사 %d명이 학위를 받았습니다. 이 가운데 %d명은 대학에 교수로 재직하고 있으며, 나머지는 기업과 컨설팅, 연구기관, 군 등에 진출하였습니다."
                  % (len(ALUMNI_MS), len(ALUMNI_PHD),
-                    sum(1 for a in ALUMNI_MS + ALUMNI_PHD if "교수" in a[5] or "Professor" in a[6])),
+                    academic_alumni_count()),
                  "%d master's and %d doctoral students have come through. %d now teach at universities; the rest are in industry, consulting, research institutes, and the armed forces."
                  % (len(ALUMNI_MS), len(ALUMNI_PHD),
-                    sum(1 for a in ALUMNI_MS + ALUMNI_PHD if "교수" in a[5] or "Professor" in a[6])))
+                    academic_alumni_count()))
     body += career_section()
     body += '''
 <section class="sec" data-scope="alumni">

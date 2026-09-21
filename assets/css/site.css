@@ -684,3 +684,23 @@ td.lk{white-space:nowrap}
 }
 .tlink:hover{text-decoration-color:var(--brand)}
 .tlink svg{width:13px;height:13px;opacity:.7}
+
+/* ===== 졸업생 도넛 차트 ===== */
+.donut{max-width:320px}
+.donut__fig{position:relative;width:220px;max-width:100%}
+.donut__svg{display:block;width:100%;height:auto}
+.donut__svg circle{fill:none;stroke-width:16}
+.donut__rest{stroke:var(--muted);opacity:.3}
+.donut__arc{stroke:var(--brand)}
+.donut__c{
+  position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  text-align:center;line-height:1.25;
+}
+.donut__c b{font-size:36px;font-weight:800;letter-spacing:-.04em;color:var(--brand)}
+.donut__c span{font-size:12.5px;color:var(--muted)}
+.donut__lg{margin-top:22px;display:grid;gap:10px;font-size:14.5px;color:var(--text-2)}
+.donut__lg li{display:flex;align-items:center;gap:10px}
+.donut__lg b{margin-left:auto;font-weight:800;color:var(--text)}
+.donut__sw{flex:0 0 auto;width:12px;height:12px;border-radius:3px;background:var(--muted);opacity:.3}
+.donut__sw--a{background:var(--brand);opacity:1}
+.donut__note{margin-top:14px;font-size:12.5px;color:var(--muted)}
