@@ -201,7 +201,7 @@ html[data-lang="ko"] .sec h2 .thin,html[data-lang="ko"] .lead-quote em{font-styl
 .hero__bg{position:absolute;inset:0;z-index:-3}
 .hero__photo{
   position:absolute;inset:0;background-size:cover;background-position:center 40%;
-  background-image:var(--hero-photo,none);opacity:.30;filter:saturate(.7);
+  opacity:.30;filter:saturate(.7);
 }
 .hero__grad{
   position:absolute;inset:0;
@@ -525,7 +525,6 @@ td.yr{white-space:nowrap;font-variant-numeric:tabular-nums;color:var(--muted)}
   background:var(--brand-soft);color:var(--text-2);font-size:14.3px;line-height:1.75;
 }
 .note b{color:var(--text)}
-/* .hero{ --hero-photo:url("../img/hero.jpeg"); } */
 
 /* ===== 소식 (Highlights) ===== */
 .news{border-top:1px solid var(--line)}

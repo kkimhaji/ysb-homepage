@@ -1217,17 +1217,19 @@ def hero_photo():
     """assets/img/ 에 히어로 사진이 있으면 HTML 기준 상대 경로를, 없으면 None 을 돌려준다."""
     for fn in HERO_PHOTOS:
         if os.path.isfile(os.path.join(OUT, "assets", "img", fn)):
-            return "/assets/img/" + fn
+            return "assets/img/" + fn
     return None
 
 def build_index():
         # 사진이 있으면 사진만 보이고, 없을 때만 라인아트와 네트워크 그래픽이 대신 나온다.
     photo = hero_photo()
     if photo:
-        hero_open = '<section class="hero" style="--hero-photo:url(\'%s\')">' % photo
+        # 사진 경로는 CSS 변수 대신 요소에 직접 지정한다. 요소의 inline style 안 상대 경로는
+        # 이 HTML 문서 기준으로 해석되어 하위 경로 배포(/저장소이름/)에서도 어긋나지 않는다.
+        photo_div = '<div class="hero__photo" style="background-image:url(\'%s\')"></div>' % quote(photo, safe="/")
         hero_art = ""
     else:
-        hero_open = '<section class="hero">'
+        photo_div = '<div class="hero__photo"></div>'
         hero_art = ARCH + net("hero__net")
     stats = [
         (str(len(FACULTY)), "전임 교수", "Faculty members"),
@@ -1268,8 +1270,8 @@ def build_index():
     meth = "".join('<li>%s%s</li>' % (I["check"], t(ko, en)) for ko, en in METHODS)
 
     body = '''
-%s
- <div class="hero__bg"><div class="hero__grad"></div><div class="hero__photo"></div><div class="hero__veil"></div></div>
+<section class="hero">
+ <div class="hero__bg"><div class="hero__grad"></div>%s<div class="hero__veil"></div></div>
  %s
  <div class="wrap hero__in">
   <div class="eyebrow rv">%s</div>
@@ -1391,8 +1393,8 @@ def build_index():
  </div>
 </section>
 ''' % (
- hero_open, hero_art,
-  t("연세대학교 경영대학 &middot; 석사 / 박사 과정",
+ photo_div, hero_art,
+   t("연세대학교 경영대학 &middot; 석사 / 박사 과정",
    "Yonsei School of Business &middot; M.S. / Ph.D. Programs"),
  ('<h1 class="rv" data-delay="80">%s<span class="accent ko">가치의 흐름을 설계하는&nbsp;학문</span>'
   '<span class="accent en">Designing how value flows</span></h1>'
