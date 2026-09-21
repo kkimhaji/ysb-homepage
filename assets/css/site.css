@@ -526,7 +526,7 @@ td.yr{white-space:nowrap;font-variant-numeric:tabular-nums;color:var(--muted)}
   background:var(--brand-soft);color:var(--text-2);font-size:14.3px;line-height:1.75;
 }
 .note b{color:var(--text)}
-.hero{ --hero-photo:url("../img/hero.jpeg"); }
+/* .hero{ --hero-photo:url("../img/hero.jpeg"); } */
 
 /* ===== 소식 (Highlights) ===== */
 .news{border-top:1px solid var(--line)}

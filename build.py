@@ -1222,7 +1222,25 @@ def students_per_faculty():
     ratio = Decimal(len(STUDENTS)) / Decimal(len(FACULTY))
     return str(ratio.quantize(Decimal("0.1"), rounding=ROUND_HALF_UP))
 
+HERO_PHOTOS = ("hero.jpg", "hero.jpeg", "hero.png", "hero.webp")
+
+
+def hero_photo():
+    """assets/img/ 에 히어로 사진이 있으면 HTML 기준 상대 경로를, 없으면 None 을 돌려준다."""
+    for fn in HERO_PHOTOS:
+        if os.path.isfile(os.path.join(OUT, "assets", "img", fn)):
+            return "/assets/img/" + fn
+    return None
+
 def build_index():
+        # 사진이 있으면 사진만 보이고, 없을 때만 라인아트와 네트워크 그래픽이 대신 나온다.
+    photo = hero_photo()
+    if photo:
+        hero_open = '<section class="hero" style="--hero-photo:url(\'%s\')">' % photo
+        hero_art = ""
+    else:
+        hero_open = '<section class="hero">'
+        hero_art = ARCH + net("hero__net")
     stats = [
         (str(len(FACULTY)), "전임 교수", "Faculty members"),
         (students_per_faculty(), "전임교원 당 학생 수", "Students per faculty member"),
@@ -1262,9 +1280,8 @@ def build_index():
     meth = "".join('<li>%s%s</li>' % (I["check"], t(ko, en)) for ko, en in METHODS)
 
     body = '''
-<section class="hero">
+%s
  <div class="hero__bg"><div class="hero__grad"></div><div class="hero__photo"></div><div class="hero__veil"></div></div>
- %s
  %s
  <div class="wrap hero__in">
   <div class="eyebrow rv">%s</div>
@@ -1386,8 +1403,8 @@ def build_index():
  </div>
 </section>
 ''' % (
- ARCH, net("hero__net"),
- t("연세대학교 경영대학 &middot; 석사 / 박사 과정",
+ hero_open, hero_art,
+  t("연세대학교 경영대학 &middot; 석사 / 박사 과정",
    "Yonsei School of Business &middot; M.S. / Ph.D. Programs"),
  ('<h1 class="rv" data-delay="80">%s<span class="accent ko">가치의 흐름을 설계하는&nbsp;학문</span>'
   '<span class="accent en">Designing how value flows</span></h1>'
