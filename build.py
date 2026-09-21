@@ -414,21 +414,6 @@ EMERITUS = [
 #     ("conf", "국문 표기", "영문 표기"),    학회 발표
 #   ],
 # 표기는 "저자 (연도). 제목. 학술지·학회명." 순서로 적는다. 영문이 따로 없으면 같은 문자열을 두 번 적는다.
-STUDENT_WORK = {
-    # ── 견본 ─────────────────────────────────────────────────────────────
-    # 모양을 보여 주려고 넣은 가짜 항목이다. 실제 실적을 받으면 지우고 바꾼다.
-    # 빌드할 때 [견본] 이 남아 있으면 경고가 뜬다. 게시 전에 반드시 지운다.
-    "박지현": [
-        ("pub",  "[견본] 박지현, 지도교수 (2026). 논문 제목. 학술지명, 권(호), 쪽.",
-                 "[Sample] Park, J., Advisor (2026). Title of the paper. Journal, Vol(No), pp."),
-        ("conf", "[견본] 박지현 (2026). 발표 제목. 학회명, 개최지.",
-                 "[Sample] Park, J. (2026). Title of the talk. Conference, Location."),
-    ],
-    "김동진": [
-        ("conf", "[견본] 김동진 (2026). 발표 제목. 학회명, 개최지.",
-                 "[Sample] Kim, D. (2026). Title of the talk. Conference, Location."),
-    ],
-}
 
 # 재학생.  (성명, 과정, 관심분야ko, en, 석사논문ko, en)
 #   과정 : "phd" 또는 "ms". 카드는 사진과 이름만 보여 주므로 나머지 칸은 지금 화면에 나오지 않는다.
@@ -455,21 +440,22 @@ STUDENTS = [
 #
 #  "이름": dict(initials="pjh", url="https://..."),
 #    initials : 사진 파일명에 쓰는 로마자 이니셜. 박사는 assets/img/students/ph_pjh.jpg,
-#               석사는 ms_pjh.jpg. 대소문자까지 파일명과 같아야 한다 (배포 서버는 구분한다).
+#               석사는 ms_pjh.jpg. 해당 필드에는 이니셜만 적고 ms_, ph_ 접두어는 코드가 붙여서 파일 찾음
+
 #    url      : 본인이 만든 개인 페이지 주소(http 또는 https). 빈 문자열이면 링크를 걸지 않는다.
 #  사진이 없어도 된다. 이니셜을 적지 않으면 이름의 첫 글자가 표시된다.
 #  졸업한 학생은 STUDENTS 에서 뺄 때 여기서도 뺀다. 남아 있으면 빌드가 알려 준다.
 # 이니셜 부분 수정하세요!!
 STUDENT_PROFILE = {
-    "박지현": dict(initials="ph_pjh", url=""),
-    "부귀현": dict(initials="ph_bgh", url=""),
-    "김동진": dict(initials="ms_kdj", url=""),
-    "이소현": dict(initials="ms_lsh", url=""),
-    "Yuhe Zeng": dict(initials="ms_", url=""),
-    "권진우": dict(initials="ms_", url=""),
-    "송미형": dict(initials="ms_", url=""),
-    "한지영": dict(initials="ms_", url=""),
-    "Hsin Lun Lee": dict(initials="ms_", url=""),
+    "박지현": dict(initials="pjh", url=""),
+    "부귀현": dict(initials="bgh", url=""),
+    "김동진": dict(initials="kdj", url=""),
+    "이소현": dict(initials="lsh", url=""),
+    "Yuhe Zeng": dict(initials="", url=""),
+    "권진우": dict(initials="", url=""),
+    "송미형": dict(initials="", url=""),
+    "한지영": dict(initials="", url=""),
+    "Hsin Lun Lee": dict(initials="", url=""),
 }
 
 ADV = {"허대식":"Daesik Hur","민순홍":"Soonhong Min","최선미":"Sunmee Choi","배성주":"Sungjoo Bae",
@@ -2318,8 +2304,5 @@ if __name__ == "__main__":
     print("done. %d seminars, %d alumni." % (SEMINAR_TOTAL, len(ALUMNI_MS) + len(ALUMNI_PHD)))
     guard()
     guard_headings()
-    samples = sum(1 for es in STUDENT_WORK.values() for e in es if "[견본]" in e[1])
-    if samples:
-        print("  [지울 것] 견본 연구 실적 %d건이 STUDENT_WORK 에 남아 있습니다 (지금은 화면에 나오지 않음). 게시 전에 지우세요." % samples)
     if NAMES_EN_UNVERIFIED:
         print("  [확인할 것] 영문 이름 철자 %d명 (NAMES_EN_UNVERIFIED)" % len(NAMES_EN_UNVERIFIED))
