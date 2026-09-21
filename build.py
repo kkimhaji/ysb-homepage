@@ -251,6 +251,7 @@ def page(fname, title_ko, title_en, desc_ko, body, active=None):
 <title>%s</title>
 <meta name="description" content="%s">
 <meta name="theme-color" content="#00285A">
+<meta name="robots" content="noindex">
 <meta property="og:title" content="%s">
 <meta property="og:description" content="%s">
 <meta property="og:type" content="website">
