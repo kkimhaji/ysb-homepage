@@ -192,7 +192,6 @@ html[data-lang="en"] .ko{display:none !important}
 /* Korean text keeps an upright serif; only Latin gets the italic */
 .hero h1 .accent.ko,.ko.thin,h2.ko .thin,.ko em{font-style:normal}
 .hero h1 .accent.ko{letter-spacing:-.01em}
-.sec h2 .thin{font-style:italic}
 html[data-lang="ko"] .sec h2 .thin,html[data-lang="ko"] .lead-quote em{font-style:normal}
 .fcard__role.ko,.ftr h4 .ko,thead th .ko{letter-spacing:0}
 ::selection{background:var(--brand);color:var(--on-brand)}
@@ -226,7 +225,7 @@ html[data-lang="ko"] .sec h2 .thin,html[data-lang="ko"] .lead-quote em{font-styl
   margin:26px 0 0;font-size:clamp(2.3rem,5.6vw,4.15rem);font-weight:800;line-height:1.16;letter-spacing:-.042em;
 }
 .hero h1 .accent{
-  display:block;font-family:var(--serif);font-weight:400;font-style:italic;letter-spacing:-.02em;
+  display:block;font-weight:300;letter-spacing:-.02em;
   color:#D8B978;
   font-size:clamp(1.9rem,4.6vw,3.5rem);margin-top:.08em;
 }
@@ -265,7 +264,7 @@ html[data-lang="ko"] .sec h2 .thin,html[data-lang="ko"] .lead-quote em{font-styl
 .sec--soft{background:var(--bg-soft)}
 .sec--tight{padding:72px 0}
 .sec h2{margin:16px 0 0;font-size:clamp(1.65rem,3.3vw,2.4rem);letter-spacing:-.04em;font-weight:800}
-.sec h2 .thin{font-family:var(--serif);font-style:italic;font-weight:400;color:var(--text-2);letter-spacing:-.01em}
+.sec h2 .thin{font-weight:400;color:var(--text-2);letter-spacing:-.01em}
 .sec .dek{margin-top:16px;max-width:660px;color:var(--text-2);font-size:16px;line-height:1.85}
 .sechead{margin-bottom:48px}
 .sechead--row{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap}
